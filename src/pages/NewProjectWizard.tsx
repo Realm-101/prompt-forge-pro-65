@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -11,7 +12,11 @@ import {
   Sparkles, 
   CheckCircle,
   AlertCircle,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Upload,
+  File,
+  Image,
+  X
 } from "lucide-react";
 
 const NewProjectWizard = () => {
@@ -22,11 +27,13 @@ const NewProjectWizard = () => {
     description: "",
     primaryGoal: "",
     sourceUrl: "",
-    componentUrls: [""]
+    componentUrls: [""],
+    uploadedFiles: [] as { id: string; name: string; type: string; url: string; size: number }[]
   });
 
   const [urlAnalysis, setUrlAnalysis] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const steps = [
     { id: 1, title: "Project Basics", icon: Sparkles },
@@ -73,6 +80,77 @@ const NewProjectWizard = () => {
       ...prev,
       componentUrls: prev.componentUrls.map((url, i) => i === index ? value : url)
     }));
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    setIsUploading(true);
+    
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `temp/${fileName}`;
+        
+        const bucket = file.type.startsWith('image/') ? 'project-images' : 'project-documents';
+        
+        const { data, error } = await supabase.storage
+          .from(bucket)
+          .upload(filePath, file);
+        
+        if (error) throw error;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(filePath);
+        
+        return {
+          id: data.path,
+          name: file.name,
+          type: file.type,
+          url: publicUrl,
+          size: file.size
+        };
+      });
+      
+      const uploadedFiles = await Promise.all(uploadPromises);
+      
+      setFormData(prev => ({
+        ...prev,
+        uploadedFiles: [...prev.uploadedFiles, ...uploadedFiles]
+      }));
+    } catch (error) {
+      console.error('Upload error:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeFile = async (fileId: string) => {
+    const file = formData.uploadedFiles.find(f => f.id === fileId);
+    if (!file) return;
+    
+    try {
+      const bucket = file.type.startsWith('image/') ? 'project-images' : 'project-documents';
+      await supabase.storage.from(bucket).remove([file.id]);
+      
+      setFormData(prev => ({
+        ...prev,
+        uploadedFiles: prev.uploadedFiles.filter(f => f.id !== fileId)
+      }));
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const nextStep = () => {
@@ -170,6 +248,77 @@ const NewProjectWizard = () => {
                   value={formData.primaryGoal}
                   onChange={(e) => setFormData(prev => ({ ...prev, primaryGoal: e.target.value }))}
                 />
+              </div>
+              
+              {/* File Upload Section */}
+              <div className="space-y-4">
+                <div>
+                  <Label>Content Upload</Label>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Upload documents and images to help inform the project
+                  </p>
+                </div>
+                
+                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    id="file-upload"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.txt,.md"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="cursor-pointer flex flex-col items-center gap-2"
+                  >
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">
+                        {isUploading ? "Uploading..." : "Click to upload files"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Supports images, PDFs, and documents
+                      </p>
+                    </div>
+                  </label>
+                </div>
+                
+                {/* Uploaded Files List */}
+                {formData.uploadedFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Uploaded Files</Label>
+                    <div className="space-y-2">
+                      {formData.uploadedFiles.map((file) => (
+                        <div
+                          key={file.id}
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            {file.type.startsWith('image/') ? (
+                              <Image className="w-4 h-4 text-accent" />
+                            ) : (
+                              <File className="w-4 h-4 text-accent" />
+                            )}
+                            <div>
+                              <p className="text-sm font-medium">{file.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatFileSize(file.size)}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(file.id)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
