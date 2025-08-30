@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { UrlAnalysisService } from "@/utils/urlAnalysisService";
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -48,19 +49,16 @@ const NewProjectWizard = () => {
     if (!formData.sourceUrl) return;
     
     setIsAnalyzing(true);
-    // Simulate URL analysis
-    setTimeout(() => {
-      setUrlAnalysis({
-        title: "Modern SaaS Landing Page",
-        description: "A clean, conversion-focused landing page for SaaS products",
-        primaryColor: "#3B82F6",
-        secondaryColor: "#10B981",
-        fonts: ["Inter", "SF Pro Display"],
-        keywords: ["SaaS", "productivity", "automation", "analytics"],
-        confidence: 0.85
-      });
+    try {
+      const analysis = await UrlAnalysisService.analyzeUrl(formData.sourceUrl);
+      setUrlAnalysis(analysis);
+    } catch (error) {
+      console.error('URL analysis failed:', error);
+      // Show error to user
+      alert('Failed to analyze URL. Please check the URL and try again.');
+    } finally {
       setIsAnalyzing(false);
-    }, 2000);
+    }
   };
 
   const addComponentUrl = () => {
