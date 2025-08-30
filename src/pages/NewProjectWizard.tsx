@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 
 const NewProjectWizard = () => {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
@@ -167,20 +169,125 @@ const NewProjectWizard = () => {
 
   const createProject = async () => {
     try {
-      // Here you would normally create the project in your database
-      // For now, we'll just show a success message and redirect
-      console.log("Creating project with data:", formData);
-      console.log("URL Analysis:", urlAnalysis);
+      // Generate basic YAML config based on form data
+      const yamlConfig = generateYamlConfig();
       
-      // Simulate project creation
-      alert("Project created successfully! (This is a demo - actual creation would happen here)");
+      // Save project to database
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          name: formData.name,
+          domain: formData.domain,
+          description: formData.description,
+          primary_goal: formData.primaryGoal,
+          source_url: formData.sourceUrl,
+          component_urls: formData.componentUrls.filter(url => url.trim()),
+          uploaded_files: formData.uploadedFiles,
+          url_analysis: urlAnalysis,
+          config_yaml: yamlConfig
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating project:", error);
+        alert("Error creating project. Please try again.");
+        return;
+      }
+
+      console.log("Project created successfully:", data);
       
-      // You could navigate to the project page here
-      // navigate(`/app/${projectId}/config`);
+      // Navigate to the config editor for the new project
+      navigate(`/app/${data.id}/config`);
+      
     } catch (error) {
       console.error("Error creating project:", error);
       alert("Error creating project. Please try again.");
     }
+  };
+
+  const generateYamlConfig = () => {
+    return `forge_version: "1.0"
+project:
+  name: "${formData.name}"
+  mission: "Produce a ${formData.primaryGoal || 'web application'} that enables users to ${formData.description || 'achieve their goals'}"
+  domain: build
+output_contract:
+  sections:
+    - id: intro
+      title: "Introduction"
+    - id: core
+      title: "Core Content"
+    - id: qa
+      title: "QA / Verification"
+  required_keys:
+    - "acceptance_criteria"
+    - "delivery_notes"
+process_order:
+  - define_structure
+  - draft_core
+  - wire_data_or_tools
+  - validate
+  - polish
+quality_gates:
+  build:
+    lint: true
+    typecheck: true
+    tests: required
+    lighthouse_min: 90
+    a11y: "WCAG AA"
+    security_headers: ["CSP", "Referrer-Policy", "X-Content-Type-Options"]
+missing_input_policy:
+  placeholders: "[[PLACEHOLDER]]"
+  ask_at_most_one_question: true
+single_source_of_truth:
+  type: tokens
+  location: "/content/config.*"
+  tokens:
+    colors:
+      primary: "${urlAnalysis?.primaryColor || '#3B82F6'}"
+      accent: "${urlAnalysis?.secondaryColor || '#10B981'}"
+defaults:
+  base_stack: heroui
+  palette:
+    primary: "${urlAnalysis?.primaryColor || '#3B82F6'}"
+    accent: "${urlAnalysis?.secondaryColor || '#10B981'}"
+  fonts:
+    headings: "${urlAnalysis?.fonts?.[0] || 'Inter'}"
+    body: "${urlAnalysis?.fonts?.[1] || 'Inter'}"
+toggles:
+  i18n: off
+  blog: off
+  pricing: on
+  comparison: off
+  scheduler: on
+  map: off
+  hero_3d: off
+  interactive_widget: "none"
+  cookie_consent: on
+  analytics: "none"
+  crm: "none"
+  payments: "none"
+maintainer_experience:
+  structure: modular_components
+  scripts: ["lint", "format", "test", "typecheck", "deps:check"]
+  jsdoc_public_apis: true
+  dependency_policy:
+    install: "@latest"
+    range: "~"
+safety_and_compliance:
+  regulated: false
+  region: ""
+  needs_age_gate: false
+  notes: "Neutral, non-advisory language."
+handoff_plan:
+  edit_where: "/content/config.*"
+  rotate_keys: []
+  publish_steps: "GitHub → publish → custom domain DNS"${formData.sourceUrl ? `
+source:
+  url: "${formData.sourceUrl}"
+  keywords: ${JSON.stringify(urlAnalysis?.keywords || [])}` : ''}${formData.componentUrls.filter(url => url.trim()).length > 0 ? `
+components: ${JSON.stringify(formData.componentUrls.filter(url => url.trim()))}` : ''}`;
   };
 
   return (
