@@ -14,7 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      projects: {
+        Row: {
+          component_urls: string[] | null
+          config_yaml: string | null
+          created_at: string
+          description: string | null
+          domain: string | null
+          id: string
+          name: string
+          primary_goal: string | null
+          source_url: string | null
+          updated_at: string
+          uploaded_files: Json | null
+          url_analysis: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          component_urls?: string[] | null
+          config_yaml?: string | null
+          created_at?: string
+          description?: string | null
+          domain?: string | null
+          id?: string
+          name: string
+          primary_goal?: string | null
+          source_url?: string | null
+          updated_at?: string
+          uploaded_files?: Json | null
+          url_analysis?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          component_urls?: string[] | null
+          config_yaml?: string | null
+          created_at?: string
+          description?: string | null
+          domain?: string | null
+          id?: string
+          name?: string
+          primary_goal?: string | null
+          source_url?: string | null
+          updated_at?: string
+          uploaded_files?: Json | null
+          url_analysis?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
