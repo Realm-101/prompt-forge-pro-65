@@ -12,7 +12,7 @@ export class UrlAnalysisService {
   static async analyzeUrl(url: string): Promise<UrlAnalysisResult> {
     try {
       // Call our edge function for URL analysis
-      const response = await fetch('/functions/v1/analyze-url', {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-url`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
