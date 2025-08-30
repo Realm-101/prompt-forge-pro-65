@@ -165,6 +165,24 @@ const NewProjectWizard = () => {
     }
   };
 
+  const createProject = async () => {
+    try {
+      // Here you would normally create the project in your database
+      // For now, we'll just show a success message and redirect
+      console.log("Creating project with data:", formData);
+      console.log("URL Analysis:", urlAnalysis);
+      
+      // Simulate project creation
+      alert("Project created successfully! (This is a demo - actual creation would happen here)");
+      
+      // You could navigate to the project page here
+      // navigate(`/app/${projectId}/config`);
+    } catch (error) {
+      console.error("Error creating project:", error);
+      alert("Error creating project. Please try again.");
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="max-w-4xl mx-auto">
@@ -465,7 +483,7 @@ const NewProjectWizard = () => {
                   <div className="space-y-2 text-sm">
                     <p><strong>Source URL:</strong> {formData.sourceUrl || "None"}</p>
                     <p><strong>Components:</strong> {formData.componentUrls.filter(url => url).length} URLs</p>
-                    <p><strong>Analysis:</strong> {urlAnalysis ? "Complete" : "None"}</p>
+                    <p><strong>Analysis:</strong> {urlAnalysis ? "Complete" : formData.sourceUrl ? "Available to run" : "None"}</p>
                   </div>
                 </Card>
               </div>
@@ -506,7 +524,10 @@ const NewProjectWizard = () => {
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
-            <Button className="bg-gradient-primary hover:opacity-90">
+            <Button 
+              onClick={createProject}
+              className="bg-gradient-primary hover:opacity-90"
+            >
               Create Project
               <CheckCircle className="w-4 h-4 ml-2" />
             </Button>
